@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # ==============================================================================
 # Script Name:  upall
@@ -7,12 +8,11 @@
 #               APT, Pacman/AUR, Snap, and Flatpak updates with built-in checks.
 # Author:       Matt / https://github.com/cybermaxpower/
 # License:      MIT License 
-# Version:      1.4.0
-# Date:         2026-07-11
+# Version:      1.5.0
+# Date:         2026-09-08
 # ==============================================================================
 
-
-# Clear the screen for a professional start  
+# Clear the screen for a clean start
 clear 
 
 # Cache sudo credentials upfront and keep them alive in the background
@@ -22,36 +22,76 @@ sudo -v
 while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
 # ==========================================
+# LOCK CHECK FUNCTION
+# ==========================================
+# Checks if the package database is locked by another process and retries
+wait_for_lock() {
+    local max_attempts=12  # 12 attempts * 5 seconds = 60 seconds max wait time
+    local attempt=1
+    local lock_detected=0
+
+    while [ $attempt -le $max_attempts ]; do
+        lock_detected=0
+
+        # Check APT locks on Debian/Ubuntu
+        if command -v apt &> /dev/null; then
+            if sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; then
+                lock_detected=1
+            fi
+        # Check Pacman lock on Arch
+        elif command -v pacman &> /dev/null; then
+            if [ -f /var/lib/pacman/db.lck ]; then
+                lock_detected=1
+            fi
+        fi
+
+        # If no lock is found, proceed
+        if [ $lock_detected -eq 0 ]; then
+            return 0
+        fi
+
+        echo -e "\e[33m[WAIT]\e[0m Package manager is locked by another process. Retrying ($attempt/$max_attempts) in 5s..."
+        sleep 5
+        ((attempt++))
+    done
+
+    # Halt if locked after 60 seconds
+    echo -e "\e[31m[ERROR]\e[0m Timed out waiting for package manager lock to be released."
+    exit 1
+}
+
+# ==========================================
 # 1. DETECT OPERATING SYSTEM / PACKAGER
 # ==========================================
-# We check which package manager is available to determine the OS base.
 if command -v apt &> /dev/null; then
     PKG_MANAGER="apt"
 elif command -v pacman &> /dev/null; then
     PKG_MANAGER="pacman"
 else
-    # If neither is found, print a clear error and halt everything immediately
     echo -e "\e[31m[CRITICAL ERROR]\e[0m No supported package manager (APT or Pacman) found."
     echo -e "This script is not compatible with your operating system. Exiting safely."
     exit 1
 fi
 
+# Clear the screen  
+clear 
+
 # ==========================================
 # 2. SYSTEM UPDATES
 # ==========================================
-# Clear the screen
-clear 
 echo -e "╔═════════════════════════════════════════════════════╗"
 echo -e "║        \e[32mStarting Full System Update...\e[0m               ║"
 echo -e "╚═════════════════════════════════════════════════════╝"
 echo -e "\n"
 
-# Because of the 'exit 1' above, we are 100% guaranteed to only be on APT or Pacman here
+# Check if another update tool is running before starting
+wait_for_lock
+
 if [ "$PKG_MANAGER" = "apt" ]; then
     echo -e "\e[32m[DETECTED]\e[0m Debian/Ubuntu-based system."
     sudo apt update && sudo apt full-upgrade -y
     
-    # APT Housekeeping: Clean up unused packages, old kernels, and local cache archives
+    # APT Housekeeping
     echo -e "\e[34m[MAINTENANCE]\e[0m Cleaning up orphaned packages and package cache..."
     sudo apt autoremove -y && sudo apt clean
 
@@ -71,19 +111,15 @@ fi
 
 echo -e "\n"
 
-
 # ==========================================
 # 3. SNAP UPDATES (Conditional & Silent)
 # ==========================================
-# This checks if snap is installed AND if the snap background service is actively running.
-# This prevents connection errors on certain distributions.
 if command -v snap &> /dev/null && systemctl is-active --quiet snapd; then
     echo -e "╔═════════════════════════════════════════════════════╗"
     echo -e "║                 \e[34mRefreshing Snaps...\e[0m                 ║"
     echo -e "╚═════════════════════════════════════════════════════╝"
     echo -e "\n"
     
-    # Refreshes (updates) all installed snap packages
     sudo snap refresh
     echo -e "\n"
 fi
@@ -91,33 +127,27 @@ fi
 # ==========================================
 # 4. FLATPAK UPDATES (Conditional)
 # ==========================================
-# The header and commands will now ONLY trigger if the 'flatpak' command actually exists.
 if command -v flatpak &> /dev/null; then
     echo -e "╔═════════════════════════════════════════════════════╗"
     echo -e "║                \e[35mUpdating Flatpaks...\e[0m                 ║"
     echo -e "╚═════════════════════════════════════════════════════╝"
     echo -e "\n"
     
-    # Updates all flatpaks. 
-    # 'col -b' processes backspaces/carriage returns to prevent a broken cascading text layout.
-    # '2>&1' allows grep to filter out annoying End-of-Life (EOL) warnings from the full output.
-    flatpak update -y 2>&1 | col -b | grep -vE "end-of-life|receiving fixes|applications using|extension:"
+    # Adding '|| true' ensures grep exiting with 1 doesn't trigger 'set -e'
+    flatpak update -y 2>&1 | col -b | grep -vE "end-of-life|receiving fixes|applications using|extension:|recommend moving" || true
 
-    # Automatically removes any leftover Flatpak runtimes or libraries that are no longer needed.
-    # '> /dev/null 2>&1' keeps this step completely silent.
-    flatpak uninstall --unused -y > /dev/null 2>&1
+    # Remove unused runtimes
+    flatpak uninstall --unused -y > /dev/null 2>&1 || true
     echo -e "\n"
 fi
 
 # ==========================================
 # 5. FINISH
 # ==========================================
-# Send a desktop notification if a desktop notification engine is available
 if command -v notify-send &> /dev/null; then
-    notify-send "System Update Complete" "All APT, Flatpak, and Snap updates finished successfully!" --icon=system-software-update 2>/dev/null
+    notify-send "System Update Complete" "All APT, Flatpak, and Snap updates finished successfully!" --icon=system-software-update 2>/dev/null || true
 fi
 
-# Final success message indicating the script has successfully reached the end.
 echo -e "╔═════════════════════════════════════════════════════╗"
 echo -e "║               \e[32mALL UPDATES COMPLETE!\e[0m                 ║"
 echo -e "╚═════════════════════════════════════════════════════╝"
