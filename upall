@@ -1,3 +1,4 @@
+sudo tee /usr/local/bin/upall > /dev/null << 'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -8,7 +9,7 @@ set -euo pipefail
 #               APT, Pacman/AUR, Snap, and Flatpak updates with built-in checks.
 # Author:       Matt / https://github.com/cybermaxpower/
 # License:      MIT License 
-# Version:      1.5.0
+# Version:      1.5.1
 # Date:         2026-09-08
 # ==============================================================================
 
@@ -132,14 +133,6 @@ if command -v flatpak &> /dev/null; then
     echo -e "║                \e[35mUpdating Flatpaks...\e[0m                 ║"
     echo -e "╚═════════════════════════════════════════════════════╝"
     echo -e "\n"
-    # ==========================================
-# 4. FLATPAK UPDATES (Conditional)
-# ==========================================
-if command -v flatpak &> /dev/null; then
-    echo -e "╔═════════════════════════════════════════════════════╗"
-    echo -e "║                \e[35mUpdating Flatpaks...\e[0m                  ║"
-    echo -e "╚═════════════════════════════════════════════════════╝"
-    echo -e "\n"
     
     # Updates all flatpaks. 
     # 'col -b' processes backspaces/carriage returns to prevent a broken cascading text layout.
@@ -152,6 +145,7 @@ if command -v flatpak &> /dev/null; then
     flatpak uninstall --unused -y > /dev/null 2>&1 || true
     echo -e "\n"
 fi
+
 # ==========================================
 # 5. FINISH
 # ==========================================
@@ -163,3 +157,4 @@ echo -e "╔══════════════════════�
 echo -e "║               \e[32mALL UPDATES COMPLETE!\e[0m                 ║"
 echo -e "╚═════════════════════════════════════════════════════╝"
 echo -e "\n"
+EOF
