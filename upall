@@ -132,15 +132,26 @@ if command -v flatpak &> /dev/null; then
     echo -e "║                \e[35mUpdating Flatpaks...\e[0m                 ║"
     echo -e "╚═════════════════════════════════════════════════════╝"
     echo -e "\n"
+    # ==========================================
+# 4. FLATPAK UPDATES (Conditional)
+# ==========================================
+if command -v flatpak &> /dev/null; then
+    echo -e "╔═════════════════════════════════════════════════════╗"
+    echo -e "║                \e[35mUpdating Flatpaks...\e[0m                  ║"
+    echo -e "╚═════════════════════════════════════════════════════╝"
+    echo -e "\n"
     
-    # Adding '|| true' ensures grep exiting with 1 doesn't trigger 'set -e'
+    # Updates all flatpaks. 
+    # 'col -b' processes backspaces/carriage returns to prevent a broken cascading text layout.
+    # '2>&1' allows grep to filter out annoying End-of-Life (EOL) warnings from the full output.
+    # '|| true' ensures grep returning exit status 1 doesn't trigger 'set -e'.
     flatpak update -y 2>&1 | col -b | grep -vE "end-of-life|receiving fixes|applications using|extension:|recommend moving" || true
 
-    # Remove unused runtimes
+    # Automatically removes any leftover Flatpak runtimes or libraries that are no longer needed.
+    # '> /dev/null 2>&1' keeps this step completely silent.
     flatpak uninstall --unused -y > /dev/null 2>&1 || true
     echo -e "\n"
 fi
-
 # ==========================================
 # 5. FINISH
 # ==========================================
