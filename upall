@@ -96,15 +96,15 @@ if [ "$PKG_MANAGER" = "apt" ]; then
     echo -e "\e[34m[MAINTENANCE]\e[0m Cleaning up orphaned packages and package cache..."
     sudo apt autoremove -y && sudo apt clean
 
-elif [ "$PKG_MANAGER" = "pacman" ]; then
+elif command -v pacman &> /dev/null; then
     echo -e "\e[32m[DETECTED]\e[0m Arch-based system."
     
     if command -v yay &> /dev/null; then
         echo -e "\e[34m[AUR]\e[0m Updating with yay..."
-        yay -Syu --noconfirm
+        yay -Syu --noconfirm --noeditmenu --nodiffmenu
     elif command -v paru &> /dev/null; then
         echo -e "\e[34m[AUR]\e[0m Updating with paru..."
-        paru -Syu --noconfirm
+        paru -Syu --noconfirm --fm=no
     else
         sudo pacman -Syu --noconfirm
     fi
