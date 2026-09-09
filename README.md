@@ -1,5 +1,5 @@
 # upall 🚀
-Update everything at once. **upall** automates system package, Flatpak, and Snap updates with a single, clean terminal command.d.
+Update everything at once. **upall** automates system package, Flatpak, and Snap updates with a single, clean terminal command.
  
 
 <p align="center">
