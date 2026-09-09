@@ -59,6 +59,16 @@ Open your terminal from anywhere on your system and simply type:
 upall
 
 ```
+---
+## 🧪 Linux Distribution Compatibility
+
+| Distribution Family | Status | Package Manager |
+| :--- | :--- | :--- |
+| **Debian / Ubuntu / Mint / MX etc** | 🟢 **Supported** | `apt` |
+| **Arch / Manjaro / EndeavourOS etc** | 🟢 **Supported** | `pacman` |
+| **Fedora / Red Hat (RHEL)** | 🔴 **Unsupported** | No `dnf` support |
+
+---
 
 ## What to Expect When Run:
  * **Screen Refresh:** The script starts by clearing your terminal view for a clprofessionalional workspace.
@@ -74,7 +84,9 @@ When the script starts, you will see a standard [sudo] password prompt.
  * You only need to type your password **once** at the beginning. The script will remember it until all updates are finished.
  
 
+
 ---
+
 
 ## ⚖️ Warranty & Liability Disclaimer
 
